@@ -115,8 +115,8 @@ type Linode struct {
     Datacenter    Datacenter       `json:"datacenter"`
     Distribution  Distribution     `json:"distribution"`
     Group         string           `json:"group"`
-    IPv4          IPv4             `json:"ipv4"`
-    IPv6          []IPv6           `json:"ipv6"`
+    IPv4          string           `json:"ipv4"`
+    IPv6          string           `json:"ipv6"`
     Label         string           `json:"label"`
     Type          []Service        `json:"type"`
     Status        string           `json:"status"`
