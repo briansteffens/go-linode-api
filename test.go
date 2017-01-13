@@ -20,8 +20,8 @@ func main() {
 	//var result LinodeResult
 	//err := request("linode/instances", &result)
 
-	//var result DatacentersResult
-	//err := linode.Request("datacenters", &result)
+	var datacenters DatacentersResult
+	err2 := linode.Request("datacenters", &datacenters)
 
 	//var result DistributionResult
 	//err := request("distributions", &result)
@@ -34,6 +34,14 @@ func main() {
 		return
 	}
 
+	if err2 != nil {
+		log.Fatal(err2)
+		return
+	}
+
 	fmt.Println(result)
 	fmt.Println(result.TotalPages)
+	fmt.Println(" ")
+	fmt.Println(datacenters)
+	fmt.Println(datacenters.TotalPages)
 }
