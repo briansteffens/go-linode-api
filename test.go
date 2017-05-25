@@ -1,6 +1,6 @@
 package main
 
-import "log"
+//import "log"
 import "fmt"
 import "strings"
 import "io/ioutil"
@@ -14,34 +14,72 @@ func main() {
 
 	linode := LinodeClient{strings.TrimSpace(string(token))}
 
+	filter := And(
+		Comparison{"label", Eq, "bws"},
+	)
+
+	fmt.Println(filter.Json())
+
 	var result LinodeResult
-	err = linode.Request("linode/instances", &result)
+	err = linode.Request("linode/instances", filter, &result)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+
+/*
+
+	x := Filter {LogicalAnd, []FilterNode{
+		Comparison{"Label", Contains, "some"},
+		Filter {LogicalOr, []FilterNode{
+			Comparison{"label", Neq, "dorp"},
+			Comparison{"TotalTransfer", Gt, "123123"},
+		}},
+	}}
+
+	y := And(
+		Comparison{"Label", Contains, "some"},
+		Comparison{"Label", Eq, "yup"},
+		Or(
+			Comparison{"label", Neq, "dorp"},
+			Comparison{"TotalTransfer", Gt, "123123"},
+		),
+	)
+
+
+
+	fmt.Println(x)
+	fmt.Println(y)
+
+	fmt.Println(y.Json());
+
+
+
+*/
+
+
+	//var result LinodeResult
+	//err = linode.Request("linode/instances", &result)
 
 	//var result LinodeResult
 	//err := request("linode/instances", &result)
 
-	var datacenters DatacentersResult
-	err2 := linode.Request("datacenters", &datacenters)
+	//var result RegionsResult
+	//err = linode.Request("regions", &result)
 
 	//var result DistributionResult
-	//err := request("distributions", &result)
+	//err = linode.Request("linode/distributions", &result)
 
 	//var result KernelResult
-	//err := request("kernels", &result)
+	//err = linode.Request("linode/kernels", &result)
 
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	//if err != nil {
+	//	log.Fatal(err)
+	//	return
+	//}
 
-	if err2 != nil {
-		log.Fatal(err2)
-		return
-	}
-
-	fmt.Println(result)
-	fmt.Println(result.TotalPages)
-	fmt.Println(" ")
-	fmt.Println(datacenters)
-	fmt.Println(datacenters.TotalPages)
+	//fmt.Println(result)
+	//fmt.Println(result.TotalPages)
 }

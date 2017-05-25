@@ -1,20 +1,135 @@
 package main
 
-import "time"
-import "net/http"
-import "encoding/json"
+import (
+	"fmt"
+	"time"
+	"strings"
+	"net/http"
+	"encoding/json"
+)
+
+type ComparisonOperator int
+
+const (
+	Eq = iota
+	Neq
+
+	Gt
+	Gte
+
+	Lt
+	Lte
+
+	Contains
+)
+
+func (c ComparisonOperator) String() string {
+	switch c {
+	case Eq:
+		return "+eq"
+	case Neq:
+		return "+neq"
+	case Gt:
+		return "+gt"
+	case Gte:
+		return "+gte"
+	case Lt:
+		return "+lt"
+	case Lte:
+		return "+lte"
+	case Contains:
+		return "+contains"
+	default:
+		return "Unknown ComparisonOperator"
+	}
+}
+
+type LogicalOperator int
+
+const (
+	LogicalAnd = iota
+	LogicalOr
+)
+
+func (l LogicalOperator) String() string {
+	switch l {
+	case LogicalAnd:
+		return "+and"
+	case LogicalOr:
+		return "+or"
+	default:
+		return "Unknown LogicalOperator"
+	}
+}
+
+type FilterNode interface {
+	GetChildren() []FilterNode
+	Json()        string
+}
+
+type Filter struct {
+	Operator LogicalOperator
+	Children []FilterNode
+}
+
+func (f Filter) GetChildren() []FilterNode {
+	return f.Children
+}
+
+func (f Filter) Json() string {
+	var children []string
+
+	for _, c := range f.Children {
+		children = append(children, c.Json())
+	}
+
+	return fmt.Sprintf("\"%s\": [%s]", f.Operator,
+		strings.Join(children, ", "));
+}
+
+type Comparison struct {
+	Column   string
+	Operator ComparisonOperator
+	Value    string
+}
+
+func (c Comparison) GetChildren() []FilterNode {
+	return []FilterNode{}
+}
+
+func (c Comparison) Json() string {
+	if c.Operator == Eq {
+		return fmt.Sprintf("{\"%s\": \"%s\"}", c.Column, c.Value)
+	}
+
+	return fmt.Sprintf("{\"%s\": {\"%s\": \"%s\"}}",
+		c.Column, c.Operator, c.Value)
+}
+
+func And(nodes ...FilterNode) Filter {
+	return Filter { LogicalAnd, nodes }
+}
+
+func Or(nodes ...FilterNode) Filter {
+	return Filter { LogicalOr, nodes }
+}
 
 type LinodeClient struct {
 	Token string
 }
 
-func (c LinodeClient) Request(snippet string, result interface{}) error {
-	endpoint := "https://api.alpha.linode.com/v4/"
+func (c LinodeClient) Request(snippet string, filter FilterNode,
+		result interface{}) error {
+	endpoint := "https://api.linode.com/v4/"
 
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", endpoint+snippet, nil)
 	req.Header.Add("Authorization", "token "+c.Token)
+	if filter != nil {
+		req.Header.Add("X-Filter", fmt.Sprintf("{%s}", filter.Json()))
+	}
+	fmt.Println(req)
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -29,20 +144,24 @@ func (c LinodeClient) Request(snippet string, result interface{}) error {
 		return err
 	}
 
+	if resp.StatusCode != 200 {
+		panic(resp.StatusCode)
+	}
+
 	return nil
 }
 
-type Datacenter struct {
+type Region struct {
 	ID      string `json:"id"`
 	Label   string `json:"label"`
 	Country string `json:"country"`
 }
 
-type DatacentersResult struct {
+type RegionsResult struct {
 	TotalPages   uint         `json:"total_pages"`
 	TotalResults uint         `json:"total_results"`
 	Page         uint         `json:"page"`
-	Datacenters  []Datacenter `json:"datacenters"`
+	Regions      []Region     `json:"regions"`
 }
 
 type Time struct {
@@ -112,7 +231,7 @@ type Linode struct {
 	Alerts        map[string]Alert `json:"alerts"`
 	Backups       BackupInfo       `json:"backups"`
 	Created       Time             `json:"created"`
-	Datacenter    Datacenter       `json:"datacenter"`
+	Region        Region           `json:"region"`
 	Distribution  Distribution     `json:"distribution"`
 	Group         string           `json:"group"`
 	IPv4          string           `json:"ipv4"`
@@ -139,7 +258,7 @@ type Backup struct {
 	Label      string     `json:"label"`
 	Status     string     `json:"status"`
 	Type       string     `json:"type"`
-	Datacenter Datacenter `json:"datacenter"`
+	Region     Region     `json:"region"`
 	Created    Time       `json:"created"`
 	Updated    Time       `json:"updated"`
 	Finished   Time       `json:"finished"`
